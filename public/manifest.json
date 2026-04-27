@@ -1,0 +1,21 @@
+{
+  "name": "看什么 (KanShenMe)",
+  "short_name": "看什么",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "description": "影视网站",
+  "icons": [
+    {
+      "src": "https://www.google.com/s2/favicons?sz=192&domain=kanshenme.uk",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://www.google.com/s2/favicons?sz=512&domain=kanshenme.uk",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

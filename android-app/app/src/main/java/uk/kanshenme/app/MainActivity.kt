@@ -46,14 +46,24 @@ class MainActivity : AppCompatActivity() {
         // 3. 设置缓存模式 (默认模式：根据 HTTP 头部协议决定是否从网络获取数据)
         webSettings.cacheMode = WebSettings.LOAD_DEFAULT
         // 4. 允许混合内容 (提升兼容性，避免图片等静态资源被拦截)
-        webSettings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+        webSettings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+        // 5. 允许跨域访问
+        webSettings.allowFileAccessFromFileURLs = true
+        webSettings.allowUniversalAccessFromFileURLs = true
+        // 6. 伪装 User-Agent，去掉 WebView 标识，防止部分 CDN 防护机制拦截图片
+        webSettings.userAgentString = webSettings.userAgentString.replace("; wv", "")
 
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 return false
             }
         }
-        webView.webChromeClient = WebChromeClient()
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage?): Boolean {
+                android.util.Log.d("WebViewConsole", "${consoleMessage?.message()} -- From line ${consoleMessage?.lineNumber()} of ${consoleMessage?.sourceId()}")
+                return super.onConsoleMessage(consoleMessage)
+            }
+        }
         webView.setBackgroundColor(Color.parseColor("#000000"))
 
         webView.loadUrl(TARGET_URL)

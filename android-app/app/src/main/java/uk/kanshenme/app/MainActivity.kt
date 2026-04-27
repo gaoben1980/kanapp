@@ -29,13 +29,24 @@ class MainActivity : AppCompatActivity() {
         val bottomNavigationView = findViewById<BottomNavigationView>(R.id.bottomNavigationView)
 
         val webSettings: WebSettings = webView.settings
+        
+        // 核心功能
         webSettings.javaScriptEnabled = true
-        webSettings.domStorageEnabled = true
         webSettings.useWideViewPort = true
         webSettings.loadWithOverviewMode = true
         webSettings.setSupportZoom(true)
         webSettings.builtInZoomControls = true
         webSettings.displayZoomControls = false
+
+        // --- 性能与缓存优化 (Performance & Caching) ---
+        // 1. 开启 DOM 存储 (H5 缓存所需，如 localStorage)
+        webSettings.domStorageEnabled = true
+        // 2. 开启 数据库 存储
+        webSettings.databaseEnabled = true
+        // 3. 设置缓存模式 (默认模式：根据 HTTP 头部协议决定是否从网络获取数据)
+        webSettings.cacheMode = WebSettings.LOAD_DEFAULT
+        // 4. 允许混合内容 (提升兼容性，避免图片等静态资源被拦截)
+        webSettings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
 
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {

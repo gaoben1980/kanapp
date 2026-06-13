@@ -5,6 +5,7 @@ import android.graphics.*
 import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
+import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.MotionEvent
 import android.view.Window
@@ -15,9 +16,13 @@ import kotlin.math.abs
  * 全屏横屏时的手势控制浮层：
  *   左半屏上下滑 → 调节屏幕亮度（无需权限，仅 in-app）
  *   右半屏上下滑 → 调节媒体音量（静默调节，不弹系统UI）
- * 非竖向手势会透传给底层视频播放器。
+ * 非竖向手势透传给底层视频播放器。
  */
-class GestureControlView(context: Context) : FrameLayout(context) {
+class GestureControlView @JvmOverloads constructor(
+    context: Context,
+    attrs: AttributeSet? = null,
+    defStyleAttr: Int = 0
+) : FrameLayout(context, attrs, defStyleAttr) {
 
     private var window: Window? = null
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -30,8 +35,8 @@ class GestureControlView(context: Context) : FrameLayout(context) {
 
     // 手势判定
     private var startX = 0f
-    private var lastY = 0f
     private var startY = 0f
+    private var lastY = 0f
     private var isVertical = false
     private var decided = false
     private val slop = dp(8f)
@@ -52,17 +57,17 @@ class GestureControlView(context: Context) : FrameLayout(context) {
     }
 
     // 画笔
-    private val bgPaint   = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val bgPaint    = Paint(Paint.ANTI_ALIAS_FLAG)
     private val trackPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val fillPaint  = Paint(Paint.ANTI_ALIAS_FLAG)
     private val textPaint  = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
 
     init {
         setWillNotDraw(false)
-        isClickable = false  // 不消费点击，仅拦截滑动
+        isClickable = false
     }
 
-    /** 在进入全屏时调用，传入 window 以控制亮度 */
+    /** 进入全屏时调用，传入 window 以读写亮度 */
     fun attach(w: Window) {
         window = w
         val lp = w.attributes
@@ -71,7 +76,7 @@ class GestureControlView(context: Context) : FrameLayout(context) {
         volAccum = 0f
     }
 
-    // ─── 手势拦截逻辑 ────────────────────────────────────────────────
+    // ─── 手势拦截 ──────────────────────────────────────────────────────
 
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
         when (ev.action) {
@@ -85,20 +90,20 @@ class GestureControlView(context: Context) : FrameLayout(context) {
                     val dy = abs(ev.y - startY)
                     if (dx > slop || dy > slop) {
                         decided = true
-                        isVertical = dy > dx   // 竖向位移更大 → 视为上下滑
+                        isVertical = dy > dx
                     }
                 }
-                if (isVertical) return true   // 拦截，交由 onTouchEvent 处理
+                if (isVertical) return true  // 竖向滑动：拦截给 onTouchEvent
             }
         }
-        return false  // 横向/点击透传给视频播放器
+        return false  // 其余事件透传给视频播放器
     }
 
     override fun onTouchEvent(ev: MotionEvent): Boolean {
         if (!isVertical) return false
         when (ev.action) {
             MotionEvent.ACTION_MOVE -> {
-                val dy = lastY - ev.y   // 上滑为正 → 增大
+                val dy = lastY - ev.y  // 上滑为正 → 增大
                 lastY = ev.y
                 if (ev.x < width / 2f) handleBrightness(dy)
                 else handleVolume(dy)
@@ -111,10 +116,9 @@ class GestureControlView(context: Context) : FrameLayout(context) {
         return true
     }
 
-    // ─── 亮度 / 音量调节 ─────────────────────────────────────────────
+    // ─── 亮度 / 音量 ───────────────────────────────────────────────────
 
     private fun handleBrightness(dy: Float) {
-        // 滑满屏幕高度约等于从0调到最大（乘以系数提升灵敏度）
         val delta = (dy / height) * 1.5f
         currentBrightness = (currentBrightness + delta).coerceIn(0.05f, 1.0f)
         window?.let { w ->
@@ -124,18 +128,17 @@ class GestureControlView(context: Context) : FrameLayout(context) {
     }
 
     private fun handleVolume(dy: Float) {
-        // 累积浮点，达到1步长时实际调节（保证滑动灵敏度一致）
         volAccum += (dy / height) * maxVolume * 1.5f
         val step = volAccum.toInt()
         if (abs(step) >= 1) {
             currentVolume = (currentVolume + step).coerceIn(0, maxVolume)
-            audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, currentVolume, 0) // 0=不弹系统UI
+            audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, currentVolume, 0)
             volAccum -= step
         }
         showHud(2, currentVolume.toFloat() / maxVolume)
     }
 
-    // ─── HUD 绘制 ─────────────────────────────────────────────────────
+    // ─── HUD ──────────────────────────────────────────────────────────
 
     private fun showHud(type: Int, value: Float) {
         hudType = type; hudValue = value; hudAlpha = 1f
@@ -155,40 +158,38 @@ class GestureControlView(context: Context) : FrameLayout(context) {
 
         val a = (hudAlpha * 255).toInt()
         val pillW = dp(40f); val pillH = dp(150f); val r = dp(20f)
-        val barW = dp(4f);   val barH = dp(96f)
-        val bR = dp(2f)
+        val barW  = dp(4f);  val barH  = dp(96f);  val bR = dp(2f)
 
-        // 水平居中于左/右半屏，垂直居中
         val cx = if (hudType == 1) width * 0.25f else width * 0.75f
         val cy = height * 0.5f
 
         // 背景胶囊
         bgPaint.color = Color.argb((a * 0.82f).toInt(), 10, 10, 10)
-        canvas.drawRoundRect(cx - pillW/2, cy - pillH/2, cx + pillW/2, cy + pillH/2, r, r, bgPaint)
+        canvas.drawRoundRect(cx-pillW/2, cy-pillH/2, cx+pillW/2, cy+pillH/2, r, r, bgPaint)
 
-        // 标签文字（亮/音）
-        textPaint.color = Color.argb(a, 220, 220, 220)
+        // 标签
+        textPaint.color = Color.argb(a, 200, 200, 200)
         textPaint.textSize = dp(10f)
-        val label = if (hudType == 1) "亮度" else "音量"
-        canvas.drawText(label, cx, cy - pillH/2 + dp(22f), textPaint)
+        canvas.drawText(if (hudType == 1) "亮度" else "音量", cx, cy - pillH/2 + dp(22f), textPaint)
 
-        // 进度条轨道
+        // 轨道
         val barTop  = cy - pillH/2 + dp(34f)
         val barBot  = barTop + barH
         val barLeft = cx - barW/2
         trackPaint.color = Color.argb((a * 0.35f).toInt(), 255, 255, 255)
-        canvas.drawRoundRect(barLeft, barTop, barLeft + barW, barBot, bR, bR, trackPaint)
+        canvas.drawRoundRect(barLeft, barTop, barLeft+barW, barBot, bR, bR, trackPaint)
 
-        // 进度条填充（从底部向上）
+        // 填充（从底部向上）
         val fillTop = barBot - barH * hudValue.coerceIn(0f, 1f)
         fillPaint.color = Color.argb(a, 255, 255, 255)
-        canvas.drawRoundRect(barLeft, fillTop, barLeft + barW, barBot, bR, bR, fillPaint)
+        canvas.drawRoundRect(barLeft, fillTop, barLeft+barW, barBot, bR, bR, fillPaint)
 
         // 百分比
-        textPaint.color = Color.argb(a, 200, 200, 200)
-        textPaint.textSize = dp(10f)
+        textPaint.color = Color.argb(a, 180, 180, 180)
         canvas.drawText("${(hudValue * 100).toInt()}%", cx, barBot + dp(16f), textPaint)
     }
 
-    private fun dp(v: Float) = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, resources.displayMetrics)
+    private fun dp(v: Float) = TypedValue.applyDimension(
+        TypedValue.COMPLEX_UNIT_DIP, v, resources.displayMetrics
+    )
 }

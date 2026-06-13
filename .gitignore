@@ -1,8 +1,27 @@
+# Dependencies
 node_modules/
+
+# Build outputs
 build/
 dist/
 coverage/
+
+# Environment
 .DS_Store
 *.log
 .env*
 !.env.example
+
+# Android / Gradle
+.gradle/
+*.apk
+*.aab
+*.keystore
+!debug.keystore
+local.properties
+.idea/
+*.iml
+android-app/.gradle/
+android-app/app/build/
+android-app/build/
+android-app/local.properties

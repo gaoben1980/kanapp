@@ -12,9 +12,18 @@ import android.webkit.WebViewClient
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.bottomnavigation.BottomNavigationView
 
+import android.content.pm.ActivityInfo
+import android.view.View
+import android.widget.FrameLayout
+import android.view.ViewGroup
+
 class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
+    private lateinit var fullScreenContainer: FrameLayout
+    private lateinit var bottomNavigationView: BottomNavigationView
+    private var customView: View? = null
+    private var customViewCallback: WebChromeClient.CustomViewCallback? = null
     private val TARGET_URL = "https://kanshenme.uk"
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -26,7 +35,8 @@ class MainActivity : AppCompatActivity() {
         window.statusBarColor = Color.parseColor("#000000")
 
         webView = findViewById(R.id.webView)
-        val bottomNavigationView = findViewById<BottomNavigationView>(R.id.bottomNavigationView)
+        bottomNavigationView = findViewById(R.id.bottomNavigationView)
+        fullScreenContainer = findViewById(R.id.fullScreenContainer)
 
         val webSettings: WebSettings = webView.settings
         
@@ -62,6 +72,33 @@ class MainActivity : AppCompatActivity() {
             override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage?): Boolean {
                 android.util.Log.d("WebViewConsole", "${consoleMessage?.message()} -- From line ${consoleMessage?.lineNumber()} of ${consoleMessage?.sourceId()}")
                 return super.onConsoleMessage(consoleMessage)
+            }
+
+            override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
+                if (customView != null) {
+                    callback?.onCustomViewHidden()
+                    return
+                }
+                customView = view
+                customViewCallback = callback
+                fullScreenContainer.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+                fullScreenContainer.visibility = View.VISIBLE
+                webView.visibility = View.GONE
+                bottomNavigationView.visibility = View.GONE
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            }
+
+            override fun onHideCustomView() {
+                if (customView == null) {
+                    return
+                }
+                fullScreenContainer.removeView(customView)
+                customView = null
+                fullScreenContainer.visibility = View.GONE
+                webView.visibility = View.VISIBLE
+                bottomNavigationView.visibility = View.VISIBLE
+                customViewCallback?.onCustomViewHidden()
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
             }
         }
         webView.setBackgroundColor(Color.parseColor("#000000"))
@@ -106,7 +143,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onBackPressed() {
-        if (webView.canGoBack()) {
+        if (customView != null) {
+            webView.webChromeClient?.onHideCustomView()
+        } else if (webView.canGoBack()) {
             webView.goBack()
         } else {
             super.onBackPressed()

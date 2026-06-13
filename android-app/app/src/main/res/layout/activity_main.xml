@@ -28,14 +28,13 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <FrameLayout
+    <!-- 全屏容器：使用自定义 GestureControlView，支持左右分区手势调节亮度/音量 -->
+    <uk.kanshenme.app.GestureControlView
         android:id="@+id/fullScreenContainer"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:visibility="gone"
         android:background="#000000"
-        android:clickable="true"
-        android:focusable="true"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"

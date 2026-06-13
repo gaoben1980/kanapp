@@ -1,6 +1,6 @@
 {
-  "name": "",
-  "description": "",
+  "name": "看什么 KanShenMe",
+  "description": "影视浏览应用，Web 演示 + 原生 Android APK",
   "requestFramePermissions": [],
   "majorCapabilities": []
 }
